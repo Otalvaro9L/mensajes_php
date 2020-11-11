@@ -1,3 +1,69 @@
+<?php
+
+include 'conexion.php';
+
+
+if (isset($_POST['enviar'])) {
+	//1. recibimos las variables del formulario
+	$nombre_completo = $_POST['nombre_completo'];
+	$celular = $_POST['celular'];
+	$correo = $_POST['correo'];
+	$clave = $_POST['clave'];
+	$clave2 = $_POST['clave2'];
+
+	//2. validar nuevamente las contraseñas
+	if ($clave != $clave2 || strlen($clave)<7) {
+		$respuesta = "Las contraseñas no coinciden o son menores a 7 caracteres";
+	}else{
+		//3. vamos a validar que no exista el correo o el celular en base de datos
+		$conexion = $GLOBALS['enlace'];
+		$consultaCorreo = "SELECT * FROM `usuarios` WHERE `correo` = '$correo' OR `celular` = '$celular'";
+		$ejecutarconsultaCorreo = $conexion->query($consultaCorreo);
+
+		if (mysqli_num_rows($ejecutarconsultaCorreo) > 0) {
+
+			//validamos si es el correo o el celular, el que ya está registrado
+			$resultado = $ejecutarconsultaCorreo->fetch_array(MYSQLI_ASSOC);
+
+			if ($resultado['correo'] == $correo) {
+			 	$respuesta = "el correo ya se encuentran registrado";
+			} 
+			if ($resultado['celular'] == $celular){
+				$respuesta = "el celular ya se encuentran registrado";
+			}			
+		}else{
+			//4. inserción en la bd
+			//4.1 ciframos la clave
+			$claveCifrada = md5(md5($clave));
+
+			$consultaRegistro = "INSERT INTO `usuarios` (`nombre_completo`, `correo`, `celular`, `clave`) VALUES ( '$nombre_completo', '$correo', '$celular', '$claveCifrada')";
+		
+			$ejecutar = $conexion->query($consultaRegistro);
+
+			if ($ejecutar === TRUE) {
+			  	echo "<div class='alert alert-success' role='alert'>
+	  				Usuario creado correctamente, ahora podrá <a href='login.php'>inicia sesión</a><br>
+				</div>";
+			} else {
+				$respuesta = "no se pudo ingresar el usuario, contacte al soporte";
+			}
+		}
+
+		//mostramos el mensaje de error
+		if (isset($respuesta)) {
+			echo "<div class='alert alert-danger' role='alert'>
+	  			Error, no se pudo crear el usuario: ".$respuesta." <br>
+			</div>";
+		}
+
+
+		echo " <br>";
+		mysqli_close($enlace);
+	}
+
+}
+
+?>
 <!DOCTYPE html>
 <html>
 	<head>
@@ -18,35 +84,35 @@
 					<div>
 						<p>Si tienes una cuenta creada, <a href="login.php">inicia sesión</a> </p>
 					</div>
-					<form name="login" action="" method="POST">
+					<form name="login" action="" method="POST" onsubmit="return validarClave()">
 					  	<div class="form-group">
 						    <label for="nombre_completo">Nombre completo</label>
-						    <input type="text" class="form-control" id="nombre_completo" name="nombre_completo" aria-describedby="nombre-ayuda">
+						    <input type="text" class="form-control" id="nombre_completo" name="nombre_completo" aria-describedby="nombre-ayuda" required>
 					    	<small id="nombre-ayuda" class="form-text text-muted">Tu nombre completo .</small>
 					  	</div>
 
 					  	<div class="form-group">
 						    <label for="correo">Correo</label>
-						    <input type="email" class="form-control" id="correo" name="correo" aria-describedby="correo-ayuda">
+						    <input type="email" class="form-control" id="correo" name="correo" aria-describedby="correo-ayuda" required>
 					    	<small id="correo-ayuda" class="form-text text-muted">No te enviaremos Spam, allí podrás recuperar tu cuenta.</small>
 					  	</div>
 
 					  	<div class="form-group">
 						    <label for="celular">Celular</label>
-						    <input type="tel" class="form-control" id="celular" name="celular" aria-describedby="celular-ayuda">
+						    <input type="tel" class="form-control" id="celular" name="celular" aria-describedby="celular-ayuda" required>
 					    	<small id="celular-ayuda" class="form-text text-muted">también puedes usar tu número para el login.</small>
 					  	</div>
 
 					  	<div class="form-group">
 					    	<label for="clave">Contraseña</label>
-					    	<input type="password" class="form-control" id="clave" name="clave">
+					    	<input required type="password" class="form-control" id="clave" name="clave">
 					  	</div>
 
 					  	<div class="form-group">
 					    	<label for="clave2">Verifica tu Contraseña</label>
-					    	<input type="password" class="form-control" id="clave2" name="clave2">
+					    	<input required type="password" class="form-control" id="clave2" name="clave2">
 					  	</div>
-					  	<button type="submit" name="enviar" class="btn btn-primary">Enviar</button>
+					  	<button id="enviar" type="submit" name="enviar" class="btn btn-primary"  >Enviar</button>
 					</form>
 				</div>
 				<div class="col-md-3"></div>
@@ -56,5 +122,19 @@
 		<footer>
 			<p>Mensajes App - creado para mostrar Owasp 2020 ©</p>
 		</footer>
+		<script type="text/javascript">
+
+			function validarClave(){
+				let clave = document.getElementById('clave').value;	
+				let clave2 = document.getElementById('clave2').value;
+
+				if(clave == clave2 && clave.length>7){
+					return true;
+				}else{
+					return false;
+				}
+			}
+
+		</script>
 	</body>
 </html>
